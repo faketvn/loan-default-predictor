@@ -26,30 +26,51 @@ Banks lose billions every year from loan defaults. This project builds an AI sys
 Live Demo : https://loan-default-predictor-znbqzqmwyz8utcbkrj6ssu.streamlit.app/
 
 bash
+
 git clone https://github.com/YOUR_USERNAME/loan-default-predictor.git
+
 cd loan-default-predictor
+
 python -m venv venv
+
 venv\Scripts\activate
+
 pip install -r requirements.txt
+
 streamlit run app/main.py
 
 
 ## 📁 Project Structure
 loan-default-predictor/
+
 ├── data/
+
 │   ├── raw/              ← Kaggle dataset (not in repo — download separately)
+
 │   └── processed/        ← Cleaned data (not in repo — run notebooks to generate)
+
 ├── notebooks/
+
 │   ├── 01_eda.ipynb              ← Exploratory Data Analysis
+
 │   ├── 02_preprocessing.ipynb   ← Cleaning, SMOTE, feature engineering
+
 │   ├── 03_modeling.ipynb         ← XGBoost training and evaluation
+
 │   └── 04_explainability.ipynb  ← SHAP explainability
+
 ├── model/
+
 │   └── feature_names.pkl ← Saved feature names
+
 ├── app/
+
 │   └── main.py           ← Streamlit dashboard
+
 ├── Dockerfile
+
 └── requirements.txt
+
 
 ## 📓 How to reproduce
 1. Download `application_train.csv` from [Kaggle](https://www.kaggle.com/competitions/home-credit-default-risk/data)
@@ -58,4 +79,4 @@ loan-default-predictor/
 4. Run `streamlit run app/main.py`
 
 ## 👤 Author
-Built by [Your Name] — Computer Science (AI) student
+Built by Thivyan — Computer Science (AI) student
