@@ -14,42 +14,26 @@ st.set_page_config(
     layout     = "wide"
 )
 
-# ── Load model and feature names ───────────────────────────────────
+# ── Load model and data ───────────────────────────────────
 @st.cache_resource
 def load_model():
     return joblib.load('model/model.pkl')
 
-@st.cache_resource
-def load_feature_names():
-    return joblib.load('model/feature_names.pkl')
+@st.cache_data
+def load_shap_data():
+    shap_vals = pd.read_csv('data/processed/shap_values.csv')
+    X_sample  = pd.read_csv('data/processed/X_sample.csv')
+    return shap_vals, X_sample
 
 @st.cache_data
-def generate_sample_data(feature_names):
-    """Generate synthetic sample data based on feature names"""
-    np.random.seed(42)
-    n = 200
-    data = {}
-    for col in feature_names:
-        if 'FLAG' in col or 'GENDER' in col:
-            data[col] = np.random.randint(0, 2, n).astype(float)
-        elif 'EXT_SOURCE' in col:
-            data[col] = np.random.uniform(0.1, 0.9, n)
-        elif 'DAYS' in col or 'AGE' in col or 'YEARS' in col:
-            data[col] = np.random.uniform(0, 60, n)
-        elif 'AMT' in col or 'INCOME' in col or 'CREDIT' in col:
-            data[col] = np.random.uniform(50000, 500000, n)
-        elif 'RATIO' in col or 'RATE' in col or 'TO' in col:
-            data[col] = np.random.uniform(0, 5, n)
-        else:
-            data[col] = np.random.uniform(0, 1, n)
-    return pd.DataFrame(data)
+def load_test_data():
+    X_test = pd.read_csv('data/processed/X_test.csv')
+    y_test = pd.read_csv('data/processed/y_test.csv').squeeze()
+    return X_test, y_test
 
-model        = load_model()
-feature_names = load_feature_names()
-X_sample     = generate_sample_data(feature_names)
-
-# Generate synthetic y_test (predictions from model on sample data)
-y_test = pd.Series(model.predict(X_sample))
+model               = load_model()
+shap_vals, X_sample = load_shap_data()
+X_test, y_test      = load_test_data()
 
 # ── Sidebar navigation ────────────────────────────────────
 st.sidebar.image("https://img.icons8.com/fluency/96/bank-building.png", width=60)
@@ -97,7 +81,7 @@ if page == "🔮 Predict":
     st.markdown("---")
 
     if st.button("🔍 Predict Risk", use_container_width=True):
-        input_df = X_sample.median().to_frame().T.copy()
+        input_df = X_test.median().to_frame().T.copy()
 
         if 'AGE_YEARS'         in input_df: input_df['AGE_YEARS']         = age
         if 'EMPLOYED_YEARS'    in input_df: input_df['EMPLOYED_YEARS']    = employed_yrs
@@ -152,11 +136,11 @@ if page == "🔮 Predict":
 # ════════════════════════════════════════════════════════════
 elif page == "🧠 Explain":
     st.title("🧠 Why did the model decide this?")
-    st.markdown("Pick any applicant from the sample set and see exactly what drove the prediction.")
+    st.markdown("Pick any applicant from the test set and see exactly what drove the prediction.")
     st.markdown("---")
 
-    idx       = st.slider("Select applicant", 0, len(X_sample)-1, 0)
-    applicant = X_sample.iloc[[idx]]
+    idx       = st.slider("Select applicant", 0, len(X_test)-1, 0)
+    applicant = X_test.iloc[[idx]]
     prob      = model.predict_proba(applicant)[0][1]
     actual    = y_test.iloc[idx]
 
@@ -179,7 +163,7 @@ elif page == "🧠 Explain":
     st.markdown("---")
     st.subheader("📝 Top reasons in plain English")
     sv         = shap_single.values[0]
-    feat_names = X_sample.columns.tolist()
+    feat_names = X_test.columns.tolist()
     top_idx    = np.argsort(np.abs(sv))[::-1][:3]
 
     for rank, i in enumerate(top_idx, 1):
@@ -198,7 +182,7 @@ elif page == "📊 Model Analytics":
     col1.metric("ROC-AUC Score",  "0.7271")
     col2.metric("Training rows",  "452,296")
     col3.metric("Test rows",      "61,503")
-    col4.metric("Features used",  str(len(feature_names)))
+    col4.metric("Features used",  "74")
 
     st.markdown("---")
 
@@ -208,7 +192,7 @@ elif page == "📊 Model Analytics":
         st.subheader("🏆 Top 15 Important Features")
         importances = model.feature_importances_
         feat_df     = pd.DataFrame({
-            'Feature'   : feature_names,
+            'Feature'   : X_test.columns,
             'Importance': importances
         }).sort_values('Importance', ascending=True).tail(15)
 
@@ -222,26 +206,24 @@ elif page == "📊 Model Analytics":
 
     with col_r:
         st.subheader("🔍 SHAP Global Summary")
-        explainer    = shap.TreeExplainer(model)
-        shap_vals_np = explainer.shap_values(X_sample.head(50))
+        shap_vals_np = shap_vals.values
         fig, ax      = plt.subplots(figsize=(6, 6))
-        shap.summary_plot(shap_vals_np, X_sample.head(50),
+        shap.summary_plot(shap_vals_np, X_sample,
                           max_display=15, show=False, plot_type="bar")
         plt.tight_layout()
         st.pyplot(fig)
         plt.clf()
 
     st.markdown("---")
-    st.subheader("📈 Prediction Distribution on Sample Data")
+    st.subheader("📈 Dataset Statistics")
     col1, col2 = st.columns(2)
 
     with col1:
-        preds = model.predict(X_sample)
         fig, ax = plt.subplots(figsize=(5, 3))
         ax.bar(['Non-Default', 'Default'],
-               [sum(preds == 0), sum(preds == 1)],
+               [y_test.value_counts()[0], y_test.value_counts()[1]],
                color=['#2ecc71', '#e74c3c'])
-        ax.set_title('Predicted Class Distribution')
+        ax.set_title('Test Set Class Balance')
         ax.set_ylabel('Count')
         plt.tight_layout()
         st.pyplot(fig)
