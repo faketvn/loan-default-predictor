@@ -22,6 +22,8 @@ Banks lose billions every year from loan defaults. This project builds an AI sys
 | Deployment | Docker |
 
 ## 🚀 How to run locally
+
+Live Demo : https://loan-default-predictor-znbqzqmwyz8utcbkrj6ssu.streamlit.app/
 bash
 git clone https://github.com/YOUR_USERNAME/loan-default-predictor.git
 cd loan-default-predictor
